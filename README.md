@@ -30,6 +30,10 @@ Setup WebDAV password if needed
 
 	http://{server_name}:8080/ndrive
 
+## Known Limitation
+
+* No Write support yet
+
 ## For more info
 
 Visit [wiki](https://github.com/hojel/ndrivedav/wiki) for more info
