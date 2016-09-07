@@ -1,16 +1,22 @@
-# NdriveDAV
+# KloudDAV
 
-Virtual WebDAV server for [Naver Ndrive](http://ndrive.naver.com) service.
+Virtual WebDAV server for various Cloud services
+
+## Supported sites
+
+* bdyun : [Baidu Yun](http://yun.baidu.com)
+* ndrive : [Naver Ndrive](http://ndrive.naver.com)
 
 ## Module dependency
 
 * wsgidav
 * [ndrive](http://carpedm20.github.io/ndrive)
 * python-dateutil
+* py\_lru\_cache
 
 Install the above modules first
 
-	$ pip install wsgidav ndrive python-dateutil
+	$ pip install wsgidav ndrive python-dateutil py_lru_cache
 
 ## Setup Ndrive account
 
@@ -32,5 +38,7 @@ Setup WebDAV password if needed
 
 ## For more info
 
-Visit [wiki](https://github.com/hojel/ndrivedav/wiki) for more info
+Visit [wiki](https://github.com/hojel/klouddav/wiki) for more info
+
+Baidu cloud API is obtained from [Kodi bdyun plugin](https://github.com/caasiu/plugin.video.bdyun)
 

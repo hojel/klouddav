@@ -8,8 +8,8 @@ import dateutil.parser
 import time
 import urllib
 import urllib2
-#from io import BytesIO
 from util import RequestsIO
+from lru import LRUCacheDict
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
 from wsgidav.dav_error import DAVError, HTTP_FORBIDDEN, HTTP_INTERNAL_ERROR,\
@@ -20,12 +20,18 @@ __docformat__ = "reStructuredText"
 
 _logger = util.getModuleLogger(__name__)
 
+_last_path = None
+_dircache = LRUCacheDict(max_size=10, expiration=30*60)
+
 class NdriveCollection(DAVCollection):
     """Collection"""
     def __init__(self, path, environ, ndrive):
         DAVCollection.__init__(self, path, environ)
         self.ndrive = ndrive
-        self.nlist = None
+        try:
+            self.nlist = _dircache[path]
+        except KeyError:
+            self.nlist = None
         
     def getDisplayInfo(self):
         return {"type": "Collection"}
@@ -33,14 +39,16 @@ class NdriveCollection(DAVCollection):
     def getMemberNames(self):
         if self.nlist is None:
             self.nlist = self.ndrive.getList(self.path, type=3)
-            if self.nlist is None:
-                _logger.error("fail to read %s" % self.path)
-                return []
+            _dircache[self.path] = self.nlist
+        if self.nlist is None:
+            _logger.error("fail to read %s" % self.path)
+            return []
         return [lastitem(item['href']) for item in self.nlist]
     
     def getMember(self, name):
         if self.nlist is None:
             self.nlist = self.ndrive.getList(self.path, type=3)
+            _dircache[self.path] = self.nlist
         for item in self.nlist:
             bname = lastitem(item['href'])
             #path = joinUrl(self.path, name)
@@ -92,7 +100,6 @@ class NdriveFile(DAVNonCollection):
         _logger.debug(self.ndrive.user_id)
         _logger.debug(self.ndrive.useridx)
         req = self.ndrive.session.get(url, params = data, stream=True)
-        #return BytesIO(req.content)
         return RequestsIO(req)
 
 
@@ -114,5 +121,11 @@ class NdriveProvider(DAVProvider):
     def getResourceInst(self, path, environ):
         _logger.info("getResourceInst('%s')" % path)
         self._count_getResourceInst += 1
+        global _last_path
+        if _last_path == path:
+            global _dircache
+            #del _dircache[path]
+            _dircache.__delete__(path)
+        _last_path = path
         root = NdriveCollection("/", environ, self.ndrive)
         return root.resolve("", path)
