@@ -21,3 +21,8 @@ class RequestsIO(BufferedIOBase):
 
     def write(self, b):
         return 0
+
+#------------------------------------------------
+from lru import LRUCacheDict
+
+_dircache = LRUCacheDict(max_size=30, expiration=30*60)

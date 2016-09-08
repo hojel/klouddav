@@ -9,7 +9,6 @@ import time
 import urllib
 import urllib2
 from util import RequestsIO
-from lru import LRUCacheDict
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
 from wsgidav.dav_error import DAVError, HTTP_FORBIDDEN, HTTP_INTERNAL_ERROR,\
@@ -20,8 +19,8 @@ __docformat__ = "reStructuredText"
 
 _logger = util.getModuleLogger(__name__)
 
+from util import _dircache
 _last_path = None
-_dircache = LRUCacheDict(max_size=10, expiration=30*60)
 
 class NdriveCollection(DAVCollection):
     """Collection"""

@@ -7,7 +7,6 @@ import json
 import os.path
 from util import RequestsIO
 from io import BytesIO
-from lru import LRUCacheDict
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
 from wsgidav.dav_error import DAVError, HTTP_FORBIDDEN, HTTP_INTERNAL_ERROR,\
@@ -18,9 +17,9 @@ __docformat__ = "reStructuredText"
 
 _logger = util.getModuleLogger(__name__)
 
+from util import _dircache
 _last_path = None
 _user_info = None
-_dircache = LRUCacheDict(max_size=10, expiration=30*60)
 
 _video_fmts = ['avi', 'mp4', 'mkv', 'mov']
 MAX_FILES_IN_VIDEO_FOLDER = 10
