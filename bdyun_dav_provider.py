@@ -4,7 +4,9 @@ WebDAV wrapper for Baidu Yun cloud service
 """
 from bcloud import auth, pcs
 import json
+import os.path
 from util import RequestsIO
+from io import BytesIO
 from lru import LRUCacheDict
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
@@ -19,6 +21,10 @@ _logger = util.getModuleLogger(__name__)
 _last_path = None
 _user_info = None
 _dircache = LRUCacheDict(max_size=10, expiration=30*60)
+
+_video_fmts = ['avi', 'mp4', 'mkv', 'mov']
+MAX_FILES_IN_VIDEO_FOLDER = 10
+MIN_SIZE_FOR_STREAM = 500*1024*1024
 
 class BdyunCollection(DAVCollection):
     """Collection"""
@@ -37,13 +43,23 @@ class BdyunCollection(DAVCollection):
             global _user_info
             self.nlist = pcs.list_dir_all(_user_info['cookie'], _user_info['tokens'], self.path)
             _dircache[self.path] = self.nlist
-        return [item['server_filename'].encode('utf-8') for item in self.nlist]
+        names = [item['server_filename'].encode('utf-8') for item in self.nlist]
+        if len(names) > MAX_FILES_IN_VIDEO_FOLDER:
+            return names
+        # m3u8
+        global _video_fmts
+        for name in names:
+            rname, ext = os.path.splitext(name)
+            if ext[1:].lower() in _video_fmts and item['size'] > MIN_SIZE_FOR_STREAM:
+                names.append(rname+'.m3u8')
+        return names
     
     def getMember(self, name):
         if self.nlist is None:
             global _user_info
             self.nlist = pcs.list_dir_all(_user_info['cookie'], _user_info['tokens'], self.path)
             _dircache[self.path] = self.nlist
+        global _video_fmts
         for item in self.nlist:
             bname = item['server_filename'].encode('utf-8')
             if bname == name:
@@ -52,6 +68,10 @@ class BdyunCollection(DAVCollection):
                     return BdyunCollection(path, self.environ)
                 else:
                     return BdyunFile(path, self.environ, item)
+            if name.endswith('.m3u8'):
+                rname, ext = os.path.splitext(bname)
+                if name.startswith(rname) and ext[1:].lower() in _video_fmts:
+                    return BdyunStreamFile(joinUri(self.path, name), self.environ, item)
         return None
 
 
@@ -79,10 +99,45 @@ class BdyunFile(DAVNonCollection):
         return False
 
     def getContent(self):
-        """from downloadFile() in ndrive/client.py"""
         global _user_info
         req = pcs.stream_download(_user_info['cookie'], _user_info['tokens'], self.path)
         return RequestsIO(req)
+
+
+class BdyunStreamFile(DAVNonCollection):
+    """Represents a file."""
+    def __init__(self, path, environ, file_info):
+        DAVNonCollection.__init__(self, path, environ)
+        self.file_info = file_info
+        self.m3u = None
+
+    def getContentLength(self):
+        if self.m3u is None:
+            global _user_info
+            txt = pcs.get_streaming_playlist(_user_info['cookie'], self.file_info['path'])
+            self.m3u = txt.encode('utf-8')
+        return len(self.m3u)
+    def getContentType(self):
+        return util.guessMimeType(self.path)
+    def getCreationDate(self):
+        return None
+    def getDisplayName(self):
+        return self.name
+    def getDisplayInfo(self):
+        return {"type": "File"}
+    def getEtag(self):
+        return None
+    def getLastModified(self):
+        return None
+    def supportRanges(self):
+        return False
+
+    def getContent(self):
+        if self.m3u is None:
+            global _user_info
+            txt = pcs.get_streaming_playlist(_user_info['cookie'], self.file_info['path'])
+            self.m3u = txt.encode('utf-8')
+        return BytesIO(self.m3u)
 
 
 def bdyun_login(username, password):
