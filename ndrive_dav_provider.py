@@ -27,8 +27,9 @@ class NdriveCollection(DAVCollection):
     def __init__(self, path, environ, ndrive):
         DAVCollection.__init__(self, path, environ)
         self.ndrive = ndrive
+        self.abspath = self.provider.sharePath + path
         try:
-            self.nlist = _dircache[path]
+            self.nlist = _dircache[self.abspath]
         except KeyError:
             self.nlist = None
         
@@ -38,7 +39,7 @@ class NdriveCollection(DAVCollection):
     def getMemberNames(self):
         if self.nlist is None:
             self.nlist = self.ndrive.getList(self.path, type=3)
-            _dircache[self.path] = self.nlist
+            _dircache[self.abspath] = self.nlist
         if self.nlist is None:
             _logger.error("fail to read %s" % self.path)
             return []
@@ -47,7 +48,7 @@ class NdriveCollection(DAVCollection):
     def getMember(self, name):
         if self.nlist is None:
             self.nlist = self.ndrive.getList(self.path, type=3)
-            _dircache[self.path] = self.nlist
+            _dircache[self.abspath] = self.nlist
         for item in self.nlist:
             bname = lastitem(item['href'])
             #path = joinUrl(self.path, name)
@@ -121,10 +122,11 @@ class NdriveProvider(DAVProvider):
         _logger.info("getResourceInst('%s')" % path)
         self._count_getResourceInst += 1
         global _last_path
-        if _last_path == path:
+        npath = self.sharePath + path
+        if _last_path == npath:
             global _dircache
-            #del _dircache[path]
-            _dircache.__delete__(path)
-        _last_path = path
+            #del _dircache[npath]
+            _dircache.__delete__(npath)
+        _last_path = npath
         root = NdriveCollection("/", environ, self.ndrive)
         return root.resolve("", path)

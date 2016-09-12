@@ -19,7 +19,6 @@ _logger = util.getModuleLogger(__name__)
 
 from util import _dircache
 _last_path = None
-_user_info = None
 
 _video_fmts = ['avi', 'mp4', 'mkv', 'mov']
 MAX_FILES_IN_VIDEO_FOLDER = 10
@@ -29,8 +28,9 @@ class BdyunCollection(DAVCollection):
     """Collection"""
     def __init__(self, path, environ):
         DAVCollection.__init__(self, path, environ)
+        self.abspath = self.provider.sharePath + path
         try:
-            self.nlist = _dircache[path]
+            self.nlist = _dircache[self.abspath]
         except KeyError:
             self.nlist = None
         
@@ -39,9 +39,8 @@ class BdyunCollection(DAVCollection):
     
     def getMemberNames(self):
         if self.nlist is None:
-            global _user_info
-            self.nlist = pcs.list_dir_all(_user_info['cookie'], _user_info['tokens'], self.path)
-            _dircache[self.path] = self.nlist
+            self.nlist = pcs.list_dir_all(self.environ['bdyun.cookie'], self.environ['bdyun.tokens'], self.path)
+            _dircache[self.abspath] = self.nlist
         names = [item['server_filename'].encode('utf-8') for item in self.nlist]
         if len(names) > MAX_FILES_IN_VIDEO_FOLDER:
             return names
@@ -55,9 +54,8 @@ class BdyunCollection(DAVCollection):
     
     def getMember(self, name):
         if self.nlist is None:
-            global _user_info
-            self.nlist = pcs.list_dir_all(_user_info['cookie'], _user_info['tokens'], self.path)
-            _dircache[self.path] = self.nlist
+            self.nlist = pcs.list_dir_all(self.environ['bdyun.cookie'], self.environ['bdyun.tokens'], self.path)
+            _dircache[self.abspath] = self.nlist
         global _video_fmts
         for item in self.nlist:
             bname = item['server_filename'].encode('utf-8')
@@ -98,8 +96,7 @@ class BdyunFile(DAVNonCollection):
         return False
 
     def getContent(self):
-        global _user_info
-        req = pcs.stream_download(_user_info['cookie'], _user_info['tokens'], self.path)
+        req = pcs.stream_download(self.environ['bdyun.cookie'], self.environ['bdyun.tokens'], self.path)
         return RequestsIO(req)
 
 
@@ -112,8 +109,7 @@ class BdyunStreamFile(DAVNonCollection):
 
     def getContentLength(self):
         if self.m3u is None:
-            global _user_info
-            txt = pcs.get_streaming_playlist(_user_info['cookie'], self.file_info['path'])
+            txt = pcs.get_streaming_playlist(self.environ['bdyun.cookie'], self.file_info['path'])
             self.m3u = txt.encode('utf-8')
         return len(self.m3u)
     def getContentType(self):
@@ -133,8 +129,7 @@ class BdyunStreamFile(DAVNonCollection):
 
     def getContent(self):
         if self.m3u is None:
-            global _user_info
-            txt = pcs.get_streaming_playlist(_user_info['cookie'], self.file_info['path'])
+            txt = pcs.get_streaming_playlist(self.environ['bdyun.cookie'], self.file_info['path'])
             self.m3u = txt.encode('utf-8')
         return BytesIO(self.m3u)
 
@@ -200,20 +195,22 @@ class BdyunProvider(DAVProvider):
             # save
             f = open(cfgpath, 'w')
             json.dump(f, {'cookie':cookie, 'tokens':tokens})
-        global _user_info
-        _user_info = {"username":username,
-                      "cookie":cookie,
-                      "tokens":tokens
-                     }
+        self.user_info = {"username":username,
+                          "cookie":cookie,
+                          "tokens":tokens
+                         }
 
     def getResourceInst(self, path, environ):
         _logger.info("getResourceInst('%s')" % path)
         self._count_getResourceInst += 1
         global _last_path
-        if _last_path == path:
+        npath = self.sharePath + path
+        if _last_path == npath:
             global _dircache
-            #del _dircache[path]
-            _dircache.__delete__(path)
-        _last_path = path
+            #del _dircache[npath]
+            _dircache.__delete__(npath)
+        _last_path = npath
+        environ['bdyun.cookie'] = self.user_info['cookie']
+        environ['bdyun.tokens'] = self.user_info['tokens']
         root = BdyunCollection("/", environ)
         return root.resolve("", path)
