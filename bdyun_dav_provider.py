@@ -5,7 +5,7 @@ WebDAV wrapper for Baidu Yun cloud service
 from bcloud import auth, pcs
 import json
 import os.path
-from util import RequestsIO
+from util import UrlIO
 from io import BytesIO
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
@@ -93,11 +93,11 @@ class BdyunFile(DAVNonCollection):
     def getLastModified(self):
         return self.file_info['local_mtime']
     def supportRanges(self):
-        return False
+        return True
 
     def getContent(self):
-        req = pcs.stream_download(self.environ['bdyun.cookie'], self.environ['bdyun.tokens'], self.path)
-        return RequestsIO(req)
+        url = pcs.get_simple_download_link(self.path)
+        return UrlIO(url, size=self.file_info['size'], cookies=self.environ['bdyun.cookie'], headers=pcs.default_headers)
 
 
 class BdyunStreamFile(DAVNonCollection):
@@ -148,7 +148,6 @@ def bdyun_login(username, password):
     if err_no == 257:
         vcodetype = query['vcodetype']
         codeString = query['codeString']
-        #vcode_path = os.path.join(os.sep, 'mnt', 'c', 'Users', 'seung', 'Downloads', 'vcode.png')
         vcode_path = auth.get_signin_vcode(cookie, codeString)
         print vcode_path
         verifycode = ""

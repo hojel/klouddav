@@ -204,6 +204,16 @@ def stream_download(cookie, tokens, path):
         return None
 
 
+def get_simple_download_link(path):
+    url = ''.join([
+        PCS_URL,
+        'file?method=download',
+        '&path=', path,
+        '&app_id=250528',
+    ])
+    return url
+
+
 def get_streaming_playlist(cookie, path, video_type='M3U8_AUTO_480'):
     '''获取流媒体(通常是视频)的播放列表.
 
