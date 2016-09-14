@@ -8,7 +8,7 @@ import dateutil.parser
 import time
 import urllib
 import urllib2
-from util import RequestsIO
+from util import UrlIO
 from wsgidav.util import joinUri
 from wsgidav.dav_provider import DAVProvider, DAVNonCollection, DAVCollection
 from wsgidav.dav_error import DAVError, HTTP_FORBIDDEN, HTTP_INTERNAL_ERROR,\
@@ -99,8 +99,7 @@ class NdriveFile(DAVNonCollection):
                }
         _logger.debug(self.ndrive.user_id)
         _logger.debug(self.ndrive.useridx)
-        req = self.ndrive.session.get(url, params = data, stream=True)
-        return RequestsIO(req)
+        return UrlIO(url, params=data, session=self.ndrive.session)
 
 
 def lastitem(path):

@@ -193,7 +193,7 @@ class BdyunProvider(DAVProvider):
             cookie, tokens = result
             # save
             f = open(cfgpath, 'w')
-            json.dump(f, {'cookie':cookie, 'tokens':tokens})
+            json.dump({'cookie':cookie, 'tokens':tokens}, f)
         self.user_info = {"username":username,
                           "cookie":cookie,
                           "tokens":tokens

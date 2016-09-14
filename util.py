@@ -24,15 +24,17 @@ class RequestsIO(RawIOBase):
         return False
 
 class UrlIO(RawIOBase):
-    def __init__(self, url, size=-1, headers={}, cookies={}):
+    def __init__(self, url, size=-1, params={}, headers={}, cookies={}, session=None):
         super(UrlIO, self).__init__()
         self.url = url
         self.size = size
         self.offset = 0
         self.last_pos = size - 1
         self.range_mode = False
+        self.params = params
         self.headers = headers
         self.cookies = cookies
+        self.session = session if session else requests
         self.req = None
 
     def readable(self):
@@ -46,7 +48,7 @@ class UrlIO(RawIOBase):
                 if self.last_pos >= self.size:
                     self.last_pos = (self.size-1)
                 hdrs.update({"Range":"bytes=%d-%d" % (self.offset, self.last_pos)})
-            self.req = requests.get(self.url, headers=hdrs, cookies=self.cookies, stream=True, timeout=50)
+            self.req = self.session.get(self.url, params=self.params, headers=hdrs, cookies=self.cookies, stream=True, timeout=50)
         if n == -1:
             _b = self.req.content
         else:
