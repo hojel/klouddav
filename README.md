@@ -18,13 +18,13 @@ Install the above modules first
 
 	$ pip install wsgidav ndrive python-dateutil py_lru_cache
 
-## Setup Ndrive account
+## Setup site account
 
-Modify Ndrive account in *wsgidav.conf*
+Modify account name and password for a site in *wsgidav.conf*
 
 	addShare("ndrive", NdriveProvider("{naver_user}", "{naver_pw}"))
 
-Setup WebDAV password if needed
+Setup WebDAV password also if needed
 
 	addUser("ndrive", "{webdav_user}", "{webdav_pw}"))
 
